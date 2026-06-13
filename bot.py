@@ -118,21 +118,58 @@ class BungaeBot:
         await self.page.wait_for_timeout(300)
 
         print("  설명 입력...")
-        # 첫 줄(영문 상품명) 제거, 하단 검색 태그 섹션 제거
+        # 첫 줄(영문 상품명) 제거, 하단 검색 태그 섹션 분리
         lines = self.description.splitlines()
         body_lines = []
+        tag_lines = []
+        in_tag_section = False
         for line in lines[1:]:
             if "검색 태그" in line or "검색태그" in line:
-                break
-            body_lines.append(line)
+                in_tag_section = True
+                continue
+            if in_tag_section:
+                tag_lines.append(line)
+            else:
+                body_lines.append(line)
         body = "\n".join(body_lines).strip()
         desc = self.page.locator("textarea").first
         await desc.wait_for(timeout=10000)
         await desc.fill(body)
+        # 설명 입력 후 IME 완전 종료
+        await self.page.keyboard.press("Escape")
+        await self.page.wait_for_timeout(400)
+
+        # 검색 태그 입력
+        raw_tags = " ".join(tag_lines)
+        tags = [t.strip().lstrip("#") for t in raw_tags.replace(",", " ").split() if t.strip()]
+        if tags:
+            print(f"  태그 입력... ({len(tags)}개)")
+            tag_input = self.page.locator("input[placeholder*='태그']").first
+            try:
+                await tag_input.wait_for(timeout=5000)
+                await tag_input.evaluate("el => el.focus()")
+                await self.page.wait_for_timeout(400)
+                for tag in tags:
+                    # 클립보드 경유 붙여넣기 → IME 완전 우회
+                    await self.page.evaluate(
+                        "t => navigator.clipboard.writeText(t)", tag
+                    )
+                    await self.page.wait_for_timeout(150)
+                    await self.page.keyboard.press("Control+a")
+                    await self.page.keyboard.press("Backspace")
+                    await self.page.keyboard.press("Control+v")
+                    await self.page.wait_for_timeout(300)
+                    await self.page.keyboard.press("Enter")
+                    await self.page.wait_for_timeout(400)
+            except Exception:
+                print("  태그 입력 필드를 찾지 못했습니다 — 건너뜀")
 
     # ── 등록 완료 ────────────────────────────────────────────────────
     async def _submit(self) -> None:
-        print("  등록하기 클릭...")
+        print("\n  입력 완료. 브라우저에서 내용을 확인하세요.")
+        print("  엔터를 누르면 등록하기를 클릭합니다. (중단: Ctrl+C)")
+        await asyncio.get_event_loop().run_in_executor(None, input)
+
         btn = self.page.locator("button:has-text('등록하기')").first
         await btn.wait_for(timeout=10000)
         await btn.click()

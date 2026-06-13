@@ -1,0 +1,193 @@
+================================================================================
+  번개장터 자동 등록 봇 — 개발 사항 요약
+  작성일: 2026-06-13
+  GitHub: https://github.com/noblenook/luxury-bot
+================================================================================
+
+
+1. 프로젝트 개요
+────────────────────────────────────────────────────────────────────────────────
+명품 판매 플랫폼 번개장터(bunjang.co.kr)에 상품을 자동 등록하는 Python 봇입니다.
+product.yaml에 상품 정보를 입력하고, 이미지 폴더를 선택하면
+폼 입력부터 최종 등록까지 자동으로 처리합니다.
+
+기술 스택
+  - Python 3.14 + Playwright (비동기 브라우저 자동화)
+  - 네이버 웨일 브라우저 — CDP(원격 디버깅) 방식으로 연결, 로그인 세션 유지
+  - YAML — 상품 정보 / 계정 정보 관리
+  - tkinter — 이미지 폴더 선택 GUI
+
+
+2. 프로젝트 파일 구조
+────────────────────────────────────────────────────────────────────────────────
+  luxury-bot/
+  ├── main.py          # 실행 진입점
+  ├── bot.py           # 번개장터 봇 클래스 (BungaeBot)
+  ├── product.yaml     # 상품 정보 + 플랫폼별 가격
+  ├── credentials.yaml # 네이버 로그인 계정 (gitignore 처리)
+  ├── requirements.txt # 의존 패키지
+  └── .gitignore       # credentials.yaml, __pycache__ 등 제외
+
+
+3. 실행 흐름
+────────────────────────────────────────────────────────────────────────────────
+  1.  python main.py 실행
+  2.  tkinter 폴더 선택창  →  이미지 폴더 선택
+  3.  이미지 수집           →  1.jpg ~ 10.jpg 자동 수집 / product.txt 로드
+  4.  Whale 브라우저 실행   →  --remote-debugging-port=9222 로 CDP 연결
+  5.  기존 탭 재사용        →  browser.contexts[0].pages[0] — 빈 탭 생성 없음
+  6.  /products/new 이동    →  세션 없으면 네이버 OAuth 로그인 후 재이동
+  7.  폼 자동 입력          →  이미지 → 상품명 → 카테고리 → 가격 → 상품상태 → 설명
+  8.  사용자 확인 대기      →  "엔터를 누르면 등록하기를 클릭합니다" 출력
+  9.  등록하기 클릭         →  완료 후 상품 페이지 URL 출력
+
+
+4. 핵심 기술 결정사항
+────────────────────────────────────────────────────────────────────────────────
+
+[브라우저 연동]
+  - Playwright 직접 실행 대신 Whale을 CDP(원격 디버깅)로 연결
+  - --user-data-dir로 Whale 실제 프로필 사용 → 쿠키/세션 자동 유지
+  - browser.contexts[0].pages[0]로 기존 탭 재사용 (빈 탭 생성 없음)
+  - wait_until="domcontentloaded" 사용
+    (networkidle은 번개장터에서 무한 대기 발생하여 사용 불가)
+
+[네이버 OAuth 로그인]
+  - 번개장터 로그인 버튼 셀렉터: button:has-text('네이버로 로그인')
+  - 팝업 방식 → context.expect_page()로 팝업 캐치
+  - 팝업 닫힘 이벤트(wait_for_event('close'))로 로그인 완료 감지
+  - 2단계 인증이 있을 경우 최대 3분 수동 처리 대기
+
+[이미지 업로드]
+  - 파일 input이 hidden 속성 → wait_for() 없이 직접 set_input_files() 사용
+  - 셀렉터: #media-input
+
+[상품 상태 드롭다운]
+  - 커스텀 드롭다운 (native <select> 아님) → select_option() 사용 불가
+  - "text=상품 상태를 선택해 주세요" 클릭 → 옵션 텍스트로 클릭
+
+[컨디션 등급 매핑]
+  ┌─────────┬──────────────────────┐
+  │ 등급    │ 번개장터 표시 텍스트  │
+  ├─────────┼──────────────────────┤
+  │ N       │ 새 상품 (미사용)      │
+  │ S / A+  │ 사용감 없음           │
+  │ A       │ 사용감 적음           │
+  │ B       │ 사용감 많음           │
+  │ C       │ 고장/파손 상품        │
+  └─────────┴──────────────────────┘
+
+[상품 설명 (product.txt)]
+  - 이미지 폴더에 product.txt 함께 보관
+  - 인코딩 자동 감지: UTF-8 → CP949 → EUC-KR 순서로 시도
+  - 첫 줄(영문 상품명) 자동 제거 — lines[1:]
+  - "??? 검색 태그" 포함 줄 이후 전체 자동 제거
+
+
+5. 설정 파일 형식
+────────────────────────────────────────────────────────────────────────────────
+
+[product.yaml]
+  product:
+    title_ko: "샤넬 클래식 플랩백 미디움 블랙 캐비어 금장"
+    brand: "CHANEL"
+    condition: "S"   # N / S / A+ / A / B / C
+    ...
+
+  prices:
+    bungae: 12300000
+    mustit: 12500000
+    # 기타 플랫폼 가격도 동일 파일에 정의
+
+[credentials.yaml]  ※ gitignore 처리 — 절대 외부 공유 금지
+  bungae:
+    naver_id: "아이디"
+    naver_password: "비밀번호"
+
+  ※ 메모장으로 작성 후 확장자를 .yaml로 저장하면 됩니다.
+
+
+6. 주요 트러블슈팅
+────────────────────────────────────────────────────────────────────────────────
+
+  ▸ Whale 실행 실패
+      원인: executable_path 방식 → --no-startup-window로 즉시 종료됨
+      해결: --remote-debugging-port + connect_over_cdp 방식으로 변경
+
+  ▸ 로그인 세션 미적용
+      원인: new_context() 사용 시 쿠키 없음
+      해결: browser.contexts[0] 재사용
+
+  ▸ 빈 탭 반복 생성
+      원인: 매 실행마다 about:blank 탭이 새로 열림
+      해결: context.pages[0] 재사용, about:blank 인수 제거
+
+  ▸ networkidle 무한 대기
+      원인: 번개장터가 networkidle 상태 미도달
+      해결: domcontentloaded + wait_for_timeout 조합으로 변경
+
+  ▸ hidden 파일 input
+      원인: wait_for(visible) 타임아웃
+      해결: #media-input에 직접 set_input_files()
+
+  ▸ UnicodeDecodeError
+      원인: product.txt가 EUC-KR 인코딩
+      해결: utf-8 → cp949 → euc-kr 순차 시도
+
+  ▸ 상품 상태 드롭다운
+      원인: select_option() 실패 — 커스텀 UI
+      해결: 텍스트 클릭 방식으로 전환
+
+  ▸ 설명 첫 줄·태그 섹션 입력됨
+      원인: product.txt 전체가 그대로 입력됨
+      해결: 첫 줄 제거(lines[1:]) + "검색 태그" 이하 제거
+
+
+7. 다른 플랫폼 확장 시 체크리스트
+────────────────────────────────────────────────────────────────────────────────
+번개장터 봇(BungaeBot)의 구조를 그대로 복사해 각 플랫폼별 파일을 생성합니다.
+예: guugus_bot.py, feelway_bot.py, trenbe_bot.py, rebonz_bot.py, mustit_bot.py
+
+[플랫폼별 로그인 방식]
+  ┌──────────────────┬──────────────────────┬──────────────────────────────┐
+  │ 플랫폼           │ 로그인 방식           │ 비고                         │
+  ├──────────────────┼──────────────────────┼──────────────────────────────┤
+  │ 구구스 (Guugus)  │ ID / PW + 구글 2FA   │ 2FA는 수동 처리, 최대 120초   │
+  │ 필웨이 (Feelway) │ ID / PW 직접          │ 일반 폼 로그인               │
+  │ 트렌비 (Trenbe)  │ ID / PW 직접          │ 일반 폼 로그인               │
+  │ 리본즈 (Rebonz)  │ 네이버 OAuth          │ 번개장터와 동일 방식          │
+  │ 머스트잇 (Mustit)│ 네이버 OAuth          │ 번개장터와 동일 방식          │
+  └──────────────────┴──────────────────────┴──────────────────────────────┘
+
+[폼 셀렉터 확인 방법]
+  - 각 플랫폼 등록 페이지에서 단계별 screenshot 찍어 셀렉터 확인
+  - await page.screenshot(path='debug_01.png') 코드를 각 단계에 삽입
+  - hidden input, 커스텀 드롭다운 여부 반드시 확인
+
+[credentials.yaml에 계정 추가]
+  bungae:
+    naver_id: "..."
+    naver_password: "..."
+
+  feelway:
+    id: "..."
+    password: "..."
+
+  # 각 플랫폼별 키 이름은 main.py에서 참조하는 키와 일치해야 함
+
+
+8. GitHub 버전 관리
+────────────────────────────────────────────────────────────────────────────────
+  저장소: https://github.com/noblenook/luxury-bot
+  - credentials.yaml은 .gitignore에 등록 — push되지 않음
+  - 회사 PC에서: git clone → credentials.yaml 별도 작성 → python main.py
+
+  기본 Git 워크플로우:
+    git add .
+    git commit -m "변경 내용 설명"
+    git push
+
+    # 회사 PC에서 최신 코드 받기
+    git pull
+
+================================================================================
