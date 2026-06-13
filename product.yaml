@@ -1,0 +1,44 @@
+# 상품 기초 정보 — 등록 시 이 파일을 수정하세요
+product:
+  title_en: "CHANEL CLASSIC MEDIUM FLAP BAG BLACK CAVIAR GOLD HARDWARE A01112"
+  title_ko: "샤넬 클래식 플랩백 미디움 블랙 캐비어 금장"
+  brand: "CHANEL"
+  model_number: "A01112"
+  serial_number: "Y01864 94305"
+
+  description: |
+    명품 시장에서 가장 높은 수요와 환금성을 자랑하는 샤넬의 영원한 스테디셀러, 클래식 플랩백 미디움(타임리스 라인)입니다. 스크래치와 오염에 압도적으로 강한 최고급 캐비어 가죽(카프스킨)으로 제작되어 시간이 지나도 변하지 않는 단단한 내구성을 자랑합니다. 시크한 블랙 바디와 가장 은은하고 화려하게 어우러지는 골드 메탈(금장) 하드웨어 조합으로, 샤넬 고유의 격조 높은 다이아몬드 퀼팅 실루엣이 독보적인 아우라를 선사합니다. 격식 있는 자리부터 데일리 하이엔드 룩까지 완벽하게 소화하며, 대를 이어 물려줄 수 있을 만큼 소장 가치가 완벽한 타임리스 마스터피스입니다.
+
+  size: "가로 약 25.5cm x 세로 약 15.5cm x 폭 약 6.5cm"
+  material: "캐비어 가죽 (소가죽)"
+  color: "블랙"
+  hardware: "골드 (금장)"
+  category: "크로스백/숄더백"
+
+  # 컨디션: N / S / A+ / A / B / C
+  condition: "S"
+  condition_detail: |
+    구매 후 보관만 해온 완벽한 새상품급 컨디션입니다. 캐비어 가죽 고유의 통통하고 탄탄한 다이아몬드 퀼팅 볼륨감이 신품 그대로 살아있으며, 모서리 마모나 가죽 처짐이 전혀 없습니다. 전면 CC 로고 및 체인 등 모든 금속 하드웨어 역시 미세한 스크래치조차 없이 아우라 있는 완벽한 광택을 유지하고 있으며, 내부 버건디 안감 또한 오염 없이 완벽하게 쾌적한 상태입니다.
+
+  # 구성품 (있는 항목만 true)
+  accessories:
+    guarantee_card: true
+    box: true
+    case: true
+    dust_bag: true
+    invoice: true
+    receipt: true
+    booklet: true
+    tag: true
+
+  # 실행 시 이미지 경로를 입력하거나, CLI 인자로 전달
+  # images: []  # 비워두면 실행 시 입력 요청
+
+# 플랫폼별 판매 가격 (원)
+prices:
+  guugus: 12500000
+  feelway: 12800000
+  trenbe: 12600000
+  rebonz: 12700000
+  mustit: 12500000
+  bungae: 12300000
