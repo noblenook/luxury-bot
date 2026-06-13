@@ -99,7 +99,7 @@ async def main() -> None:
         WHALE, f"--remote-debugging-port={CDP_PORT}",
         f"--user-data-dir={WHALE_PROFILE}",
         "--no-first-run", "--no-default-browser-check",
-        "--start-maximized", "about:blank",
+        "--start-maximized",
     ])
     time.sleep(2)
 
@@ -109,7 +109,11 @@ async def main() -> None:
                 f"http://localhost:{CDP_PORT}", slow_mo=150
             )
             context = browser.contexts[0] if browser.contexts else await browser.new_context()
-            page = await context.new_page()
+            # 이미 열린 탭이 있으면 재사용, 없으면 새로 열기
+            if context.pages:
+                page = context.pages[0]
+            else:
+                page = await context.new_page()
             await page.evaluate("() => window.resizeTo(screen.availWidth, screen.availHeight)")
 
             bot = BungaeBot(page, cred, product, price, images, description)
@@ -119,6 +123,8 @@ async def main() -> None:
                 print("dry-run 완료 — 등록은 하지 않습니다.")
             else:
                 await bot.run()
+                print("  브라우저에서 상품 페이지를 확인하세요. 엔터를 누르면 종료합니다.")
+                await asyncio.get_event_loop().run_in_executor(None, input)
 
             await page.close()
             await browser.close()

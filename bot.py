@@ -118,22 +118,17 @@ class BungaeBot:
         await self.page.wait_for_timeout(300)
 
         print("  설명 입력...")
+        # 첫 줄(영문 상품명) 제거, 하단 검색 태그 섹션 제거
+        lines = self.description.splitlines()
+        body_lines = []
+        for line in lines[1:]:
+            if "검색 태그" in line or "검색태그" in line:
+                break
+            body_lines.append(line)
+        body = "\n".join(body_lines).strip()
         desc = self.page.locator("textarea").first
         await desc.wait_for(timeout=10000)
-        await desc.fill(self.description)
-
-        print("  태그 입력...")
-        tags = ["샤넬", "클래식플랩", "명품가방", "캐비어", "금장"]
-        try:
-            tag_input = self.page.locator("input[placeholder*='태그']").first
-            await tag_input.wait_for(timeout=5000)
-            for tag in tags:
-                await tag_input.click()
-                await tag_input.fill(tag)
-                await self.page.keyboard.press("Space")
-                await self.page.wait_for_timeout(200)
-        except Exception:
-            pass
+        await desc.fill(body)
 
     # ── 등록 완료 ────────────────────────────────────────────────────
     async def _submit(self) -> None:
@@ -142,4 +137,5 @@ class BungaeBot:
         await btn.wait_for(timeout=10000)
         await btn.click()
         await self.page.wait_for_load_state("domcontentloaded")
-        print("  등록 완료 ✓")
+        await self.page.wait_for_timeout(1500)
+        print(f"  등록 완료 ✓ → {self.page.url}")
